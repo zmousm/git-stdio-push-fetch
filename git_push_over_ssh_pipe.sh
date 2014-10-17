@@ -14,7 +14,7 @@ for (my $i=0; $i<=1; $i++) {
     else
 	shift 2
     fi
-    justafifo=$(mktemp -u /tmp/gitpushpipe.XXXXXX)
+    justafifo=$(mktemp -u /tmp/gitpipe.XXXXXX)
     mkfifo "$justafifo"
     trap 'rm -f "$justafifo"' HUP INT QUIT TERM KILL
     ssh $shost \
@@ -27,3 +27,37 @@ for (my $i=0; $i<=1; $i++) {
     rm -f "$justafifo"
     return $rc
 }
+
+function git-pipe-fetch () {
+    set -x
+    local shost spath dhost dpath
+    eval $(perl -e \
+'my @d = qw(s d);
+for (my $i=0; $i<=1; $i++) {
+  if ($ARGV[$i] =~ /^(\[[0-9A-Fa-f:]+\]|[^:]+):(.*)$/) {
+    printf "%1\$shost=\"%2\$s\" %1\$spath=\"%3\$s\" ", $d[$i], $1, $2;
+  }
+}' "${@:1:2}")
+    if [ -z "$shost" -o -z "$dhost" -o -z "$spath" -o -z "$dpath" ]; then
+	set +x
+	return 1
+    else
+	shift 2
+    fi
+    justafifo=$(mktemp -u /tmp/gitpipe.XXXXXX)
+    mkfifo "$justafifo"
+    trap 'rm -f "$justafifo"' HUP INT QUIT TERM KILL
+    ssh $shost \
+	"cd $spath; socat - EXEC:'git fetch-pack --upload-pack=\\\"socat - 5 >&6- #\\\" /dev/null ${@//:/\:} > git-pipe-fetch-refs',fdin=5,fdout=6"\
+      <"$justafifo" 6>&- | \
+    ssh $dhost \
+	"git upload-pack $dpath" \
+      >"$justafifo"
+    rc=$?
+    rm -f "$justafifo"
+    set +x
+    return $rc
+}
+
+# "updaterefs=$(awk -v remote=\\\"${dhost}\\\" '$1 ~ /^[0-9a-f]{40}$/ { if ($2 == \\\"HEAD\\\") { sref = \\\"refs/remotes/\\\" rem \\\"/\\\" $2; } else { sref = $2; sub(/heads/, \\\"remotes/\\\" rem, sref); }; printf \\\"git update-ref %s %s\\n\\\", sref, $1; }')"\
+# "eval \\\"$updaterefs\\\""\
