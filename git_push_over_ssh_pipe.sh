@@ -46,7 +46,15 @@ for (my $i=0; $i<=1; $i++) {
     mkfifo "$justafifo"
     trap 'rm -f "$justafifo"' HUP INT QUIT TERM KILL
     ssh $shost \
-	"cd $spath; export refstmp=$(mktemp -u /tmp/gitfetchpack.XXXXXXXX); socat - SYSTEM:'git fetch-pack --upload-pack=\\\"socat - 5 #\\\" --all /home/zmousm/gitest >\$refstmp',fdin=5; awk -v remote=\"${dhost}\" '\$1 ~ /^[0-9a-f]{40}$/ { if (\$2 == \"HEAD\") { sref = \"refs/remotes/\" remote \"/\" \$2; } else { sref = \$2; sub(/heads/, \"remotes/\" remote, sref); }; printf \"update-ref %s %s\\n\", sref, \$1; }' \${refstmp} | xargs -L 1 git >&2; rm \${refstmp}"\
+	"cd $spath; export refstmp=$(mktemp -u /tmp/gitfetchpack.XXXXXXXX);"\
+	"socat - SYSTEM:'git fetch-pack --upload-pack=\\\"socat - 5 #\\\" --all /home/zmousm/gitest >\$refstmp',fdin=5;"\
+	"awk -v remote=\"${dhost}\""\
+	"'\$1 ~ /^[0-9a-f]{40}$/ {
+		if (\$2 == \"HEAD\") { sref = \"refs/remotes/\" remote \"/\" \$2; }
+		else { sref = \$2; sub(/heads/, \"remotes/\" remote, sref); };
+		printf \"update-ref %s %s\\n\", sref, \$1;
+	}' \${refstmp} | xargs -L 1 git;"\
+	"rm \${refstmp}"\
       <"$justafifo" | \
     ssh $dhost \
 	"git upload-pack $dpath" \
