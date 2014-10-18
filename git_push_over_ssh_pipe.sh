@@ -1,7 +1,7 @@
 #!/bin/bash
 
 function git-pipe-push () {
-    local shost spath dhost dpath
+    local shost spath dhost dpath opts args justafifo
     eval $(perl -e \
 'my @d = qw(s d);
 for (my $i=0; $i<=1; $i++) {
@@ -14,11 +14,23 @@ for (my $i=0; $i<=1; $i++) {
     else
 	shift 2
     fi
+    while [ -n "$1" ]; do
+	case $1 in
+	    -*|--*)
+		opts+=($1)
+		;;
+	    *)
+		args+=($1)
+	esac
+	shift
+    done
+    opts+=("/dev/null")
+    opts+=("${args[@]}")
     justafifo=$(mktemp -u /tmp/gitpipe.XXXXXX)
     mkfifo "$justafifo"
     trap 'rm -f "$justafifo"' HUP INT QUIT TERM KILL
     ssh $shost \
-	"cd $spath; socat - EXEC:'git send-pack --receive-pack=\\\"socat - 5 #\\\" /dev/null ${@//:/\:}',fdin=5" \
+	"cd $spath; socat - EXEC:'git send-pack --receive-pack=\\\"socat - 5 #\\\" /dev/null ${opts[@]//:/\:}',fdin=5" \
       <"$justafifo" | \
     ssh $dhost \
 	"git receive-pack $dpath" \
@@ -29,7 +41,7 @@ for (my $i=0; $i<=1; $i++) {
 }
 
 function git-pipe-fetch () {
-    local shost spath dhost dpath
+    local shost spath dhost dpath opts args justafifo
     eval $(perl -e \
 'my @d = qw(s d);
 for (my $i=0; $i<=1; $i++) {
@@ -42,12 +54,28 @@ for (my $i=0; $i<=1; $i++) {
     else
 	shift 2
     fi
+    while [ -n "$1" ]; do
+	case $1 in
+	    -*|--*)
+		opts+=($1)
+		;;
+	    *)
+		args+=($1)
+	esac
+	shift
+    done
+    # fetch-pack apparently needs refs
+    if [ -z "${args[@]}" ]; then
+	opts+=("--all")
+    fi
+    opts+=("/dev/null")
+    opts+=("${args[@]}")
     justafifo=$(mktemp -u /tmp/gitpipe.XXXXXX)
     mkfifo "$justafifo"
     trap 'rm -f "$justafifo"' HUP INT QUIT TERM KILL
     ssh $shost \
 	"cd $spath; export refstmp=$(mktemp -u /tmp/gitfetchpack.XXXXXXXX);"\
-	"socat - SYSTEM:'git fetch-pack --upload-pack=\\\"socat - 5 #\\\" --all /home/zmousm/gitest >\$refstmp',fdin=5;"\
+	"socat - SYSTEM:'git fetch-pack --upload-pack=\\\"socat - 5 #\\\" ${opts[@]//:/\:} >\$refstmp',fdin=5;"\
 	"awk -v remote=\"${dhost}\""\
 	"'\$1 ~ /^[0-9a-f]{40}$/ {
 		if (\$2 == \"HEAD\") { sref = \"refs/remotes/\" remote \"/\" \$2; }
