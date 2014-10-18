@@ -29,7 +29,6 @@ for (my $i=0; $i<=1; $i++) {
 }
 
 function git-pipe-fetch () {
-    set -x
     local shost spath dhost dpath
     eval $(perl -e \
 'my @d = qw(s d);
@@ -39,7 +38,6 @@ for (my $i=0; $i<=1; $i++) {
   }
 }' "${@:1:2}")
     if [ -z "$shost" -o -z "$dhost" -o -z "$spath" -o -z "$dpath" ]; then
-	set +x
 	return 1
     else
 	shift 2
@@ -48,16 +46,12 @@ for (my $i=0; $i<=1; $i++) {
     mkfifo "$justafifo"
     trap 'rm -f "$justafifo"' HUP INT QUIT TERM KILL
     ssh $shost \
-	"cd $spath; socat - EXEC:'git fetch-pack --upload-pack=\\\"socat - 5 >&6- #\\\" /dev/null ${@//:/\:} > git-pipe-fetch-refs',fdin=5,fdout=6"\
-      <"$justafifo" 6>&- | \
+	"cd $spath; export refstmp=$(mktemp -u /tmp/gitfetchpack.XXXXXXXX); socat - SYSTEM:'git fetch-pack --upload-pack=\\\"socat - 5 #\\\" --all /home/zmousm/gitest >\$refstmp',fdin=5,fdout=6; awk -v remote=\"${dhost}\" '\$1 ~ /^[0-9a-f]{40}$/ { if (\$2 == \"HEAD\") { sref = \"refs/remotes/\" remote \"/\" \$2; } else { sref = \$2; sub(/heads/, \"remotes/\" remote, sref); }; printf \"update-ref %s %s\\n\", sref, \$1; }' \${refstmp} | xargs -L 1 git >&2; rm \${refstmp}"\
+      <"$justafifo" | \
     ssh $dhost \
 	"git upload-pack $dpath" \
       >"$justafifo"
     rc=$?
     rm -f "$justafifo"
-    set +x
     return $rc
 }
-
-# "updaterefs=$(awk -v remote=\\\"${dhost}\\\" '$1 ~ /^[0-9a-f]{40}$/ { if ($2 == \\\"HEAD\\\") { sref = \\\"refs/remotes/\\\" rem \\\"/\\\" $2; } else { sref = $2; sub(/heads/, \\\"remotes/\\\" rem, sref); }; printf \\\"git update-ref %s %s\\n\\\", sref, $1; }')"\
-# "eval \\\"$updaterefs\\\""\
