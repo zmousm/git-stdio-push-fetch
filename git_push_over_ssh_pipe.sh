@@ -16,7 +16,7 @@ for (my $i=0; $i<=1; $i++) {
     fi
     while [ -n "$1" ]; do
 	case $1 in
-	    -*|--*)
+	    -*)
 		opts+=($1)
 		;;
 	    *)
@@ -24,7 +24,7 @@ for (my $i=0; $i<=1; $i++) {
 	esac
 	shift
     done
-    opts+=("/dev/null")
+    opts+=(".")
     opts+=("${args[@]}")
     justafifo=$(mktemp -u /tmp/gitpipe.XXXXXX)
     mkfifo "$justafifo"
@@ -56,7 +56,7 @@ for (my $i=0; $i<=1; $i++) {
     fi
     while [ -n "$1" ]; do
 	case $1 in
-	    -*|--*)
+	    -*)
 		opts+=($1)
 		;;
 	    *)
@@ -68,7 +68,7 @@ for (my $i=0; $i<=1; $i++) {
     if [ -z "${args[@]}" ]; then
 	opts+=("--all")
     fi
-    opts+=("/dev/null")
+    opts+=(".")
     opts+=("${args[@]}")
     justafifo=$(mktemp -u /tmp/gitpipe.XXXXXX)
     mkfifo "$justafifo"
