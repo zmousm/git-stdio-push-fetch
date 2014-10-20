@@ -4,7 +4,7 @@ BEGIN {
 	exit
     cmd = gitprefix "update-ref"
 }
-$1 ~ /^[0-9a-f]{40}$/ {
+$1 ~ /^[0-9a-f]+$/ && length($1) == 40 {
     if ($2 == "HEAD")
 	sref = "refs/remotes/" remote "/" $2
     else {
