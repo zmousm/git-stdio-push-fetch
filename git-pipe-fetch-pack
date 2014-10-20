@@ -1,0 +1,78 @@
+#!/bin/sh
+
+USAGE='[--write-refs file] [git-fetch-pack options]'
+OPTIONS_SPEC=
+SUBDIRECTORY_OK=Yes
+
+save () {
+    what="$1"
+    shift
+    for i; do
+	if test "$what" = opts && printf %s\\n "$i" | grep -q -- "^-"; then
+	    :
+	elif test "$what" = args && printf %s\\n "$i" | grep -qv -- "^-"; then
+	    :
+	elif test "$what" = all; then
+	    :
+	else
+	    continue
+	fi
+	# escape : for socat
+	i=$(printf %s\\n "$i" | sed "s/:/\\\:/g")
+	printf %s\\n "$i" | sed "s/'/'\\\\''/g;1s/^/'/;\$s/\$/' \\\\/"
+	echo " "
+    done
+    unset what i
+}
+
+. "$(git --exec-path)/git-sh-setup"
+
+write_refs=
+i=1
+while test ! $i -gt $# ; do
+    eval "ival=\$$i"
+    eval "jval=\$$((i+1))"
+    case "$ival" in
+	--write-refs=*)
+	    write_refs=$(printf %s\\n "$ival" | sed 's/--write-refs=//')
+	    shift	    
+	    ;;
+	--write-refs)
+	    if test -n "$jval" && printf %s\\n "$jval" | grep -qv -- "^-"; then
+		write_refs="$jval"
+		shift 2
+	    else
+		usage
+	    fi
+	    ;;
+    esac
+    i=$((i+1))
+done
+unset i ival jval
+
+opts=$(save opts "$@")
+args=$(save args "$@")
+# fetch-pack apparently needs some refs
+if test -z "$args"; then
+    eval "set -- $opts --all . $args"
+else
+    eval "set -- $opts . $args"
+fi
+unset opts args
+
+socat=$(which socat)
+if test -z "$socat" || test ! -x "$socat"; then
+    die "This command requires socat(1)"
+fi
+
+gfpcmd="git-fetch-pack --upload-pack=\\\"$socat - 5 #\\\" $@"
+if test -n "$write_refs"; then
+    if touch "$write_refs" && test -w "$write_refs"; then
+	:
+    else
+	die "$write_refs not writeable"
+    fi
+    gfpcmd="$gfpcmd \>$write_refs"
+fi
+
+$socat STDIO SYSTEM:"$gfpcmd",fdin=5

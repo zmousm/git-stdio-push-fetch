@@ -91,3 +91,64 @@ for (my $i=0; $i<=1; $i++) {
     rm -f "$justafifo"
     return $rc
 }
+
+function git-pipe-push2 () {
+    local shost spath dhost dpath justafifo
+    eval $(perl -e \
+'my @d = qw(s d);
+for (my $i=0; $i<=1; $i++) {
+  if ($ARGV[$i] =~ /^(\[[0-9A-Fa-f:]+\]|[^:]+):(.*)$/) {
+    printf "%1\$shost=\"%2\$s\" %1\$spath=\"%3\$s\" ", $d[$i], $1, $2;
+  }
+}' "${@:1:2}")
+    if [ -z "$shost" -o -z "$dhost" -o -z "$spath" -o -z "$dpath" ]; then
+	return 1
+    else
+	shift 2
+    fi
+    justafifo=$(mktemp -u /tmp/gitpipe.XXXXXX)
+    mkfifo "$justafifo"
+    trap 'rm -f "$justafifo"' HUP INT QUIT TERM KILL
+    ssh $shost \
+	"cd $spath;"\
+	"git pipe-send-pack $@;"\
+      <"$justafifo" | \
+    ssh $dhost \
+	"git receive-pack $dpath" \
+      >"$justafifo"
+    rc=$?
+    rm -f "$justafifo"
+    return $rc
+}
+
+function git-pipe-fetch2 () {
+    local shost spath dhost dpath justafifo
+    eval $(perl -e \
+'my @d = qw(s d);
+for (my $i=0; $i<=1; $i++) {
+  if ($ARGV[$i] =~ /^(\[[0-9A-Fa-f:]+\]|[^:]+):(.*)$/) {
+    printf "%1\$shost=\"%2\$s\" %1\$spath=\"%3\$s\" ", $d[$i], $1, $2;
+  }
+}' "${@:1:2}")
+    if [ -z "$shost" -o -z "$dhost" -o -z "$spath" -o -z "$dpath" ]; then
+	return 1
+    else
+	shift 2
+    fi
+    justafifo=$(mktemp -u /tmp/gitpipe.XXXXXX)
+    mkfifo "$justafifo"
+    trap 'rm -f "$justafifo"' HUP INT QUIT TERM KILL
+    ssh $shost \
+	"cd $spath;"\
+	"export refstmp=$(mktemp -u /tmp/gitfetchpack.XXXXXXXX);"\
+	"git pipe-fetch-pack --write-refs=\${refstmp} $@;"\
+	"gfp2gur.awk -v remote=\"${dhost}\" \${refstmp} | xargs -L 1 git;"\
+	"rm \${refstmp}"\
+      <"$justafifo" | \
+    ssh $dhost \
+	"git upload-pack $dpath" \
+      >"$justafifo"
+    rc=$?
+    rm -f "$justafifo"
+    return $rc
+}

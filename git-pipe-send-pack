@@ -1,0 +1,42 @@
+#!/bin/sh
+
+USAGE='[git-send-pack options]'
+OPTIONS_SPEC=
+SUBDIRECTORY_OK=Yes
+
+save () {
+    what="$1"
+    shift
+    for i; do
+	if test "$what" = opts && printf %s\\n "$i" | grep -q -- "^-"; then
+	    :
+	elif test "$what" = args && printf %s\\n "$i" | grep -qv -- "^-"; then
+	    :
+	elif test "$what" = all; then
+	    :
+	else
+	    continue
+	fi
+	# escape : for socat
+	i=$(printf %s\\n "$i" | sed "s/:/\\\:/g")
+	printf %s\\n "$i" | sed "s/'/'\\\\''/g;1s/^/'/;\$s/\$/' \\\\/"
+	echo " "
+    done
+    unset what i
+}
+
+. "$(git --exec-path)/git-sh-setup"
+
+opts=$(save opts "$@")
+args=$(save args "$@")
+eval "set -- $opts . $args"
+unset opts args
+
+socat=$(which socat)
+if test -z "$socat" || test ! -x "$socat"; then
+    die "This command requires socat(1)"
+fi
+
+gspcmd="git-send-pack --receive-pack=\\\"$socat - 5 #\\\" $@"
+
+$socat STDIO SYSTEM:"$gspcmd",fdin=5
