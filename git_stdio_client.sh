@@ -81,7 +81,7 @@ for (my $i=0; $i<=1; $i++) {
 	shift
     done
     # fetch-pack apparently needs refs
-    if [ -z "${args[*]}" ]; then
+    if test -z "${args[*]}" && echo "${opts[*]}" | grep -qv -- "--all"; then
 	opts+=("--all")
     fi
     opts+=(".")

@@ -53,7 +53,7 @@ unset i ival jval
 opts=$(save opts "$@")
 args=$(save args "$@")
 # fetch-pack apparently needs some refs
-if test -z "$args"; then
+if test -z "$args" && printf %s\\n "$opts" | grep -qv -- "--all"; then
     eval "set -- $opts --all . $args"
 else
     eval "set -- $opts . $args"
