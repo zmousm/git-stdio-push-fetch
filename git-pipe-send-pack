@@ -37,6 +37,6 @@ if test -z "$socat" || test ! -x "$socat"; then
     die "This command requires socat(1)"
 fi
 
-gspcmd="git-send-pack --receive-pack=\\\"$socat - 5 #\\\" $@"
+gspcmd="git send-pack --receive-pack=\\\"$socat - 5 #\\\" $@"
 
 $socat STDIO SYSTEM:"$gspcmd",fdin=5

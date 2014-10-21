@@ -65,7 +65,7 @@ if test -z "$socat" || test ! -x "$socat"; then
     die "This command requires socat(1)"
 fi
 
-gfpcmd="git-fetch-pack --upload-pack=\\\"$socat - 5 #\\\" $@"
+gfpcmd="git fetch-pack --upload-pack=\\\"$socat - 5 #\\\" $@"
 if test -n "$write_refs"; then
     if touch "$write_refs" && test -w "$write_refs"; then
 	:
