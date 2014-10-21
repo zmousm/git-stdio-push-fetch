@@ -35,13 +35,11 @@ functionality).
 
 Having loaded the functions in your shell, you can then do::
 
-    git-pipe-push sending-host:/path/to/source/git/repo
-    receiving-host:/path/to/destination/git/repo
+    git-pipe-push sending-host:/path/to/source/git/repo receiving-host:/path/to/destination/git/repo
  
 Or for the equivalent of a ``git fetch``::
 
-    git-pipe-fetch receiving-host:/path/to/destination/git/repo
-    sending-host:/path/to/source/git/repo
+    git-pipe-fetch receiving-host:/path/to/destination/git/repo sending-host:/path/to/source/git/repo
  
 ``git fetch`` operations update refs for a (potentially) *virtual*
 remote, whose name can be controlled through the ``--remote`` option
