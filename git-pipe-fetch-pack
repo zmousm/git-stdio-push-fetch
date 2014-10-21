@@ -8,9 +8,9 @@ save () {
     what="$1"
     shift
     for i; do
-	if test "$what" = opts && printf %s\\n "$i" | grep -q -- "^-"; then
+	if test "$what" = opts && printf %s\\n "$i" | grep -q -- "^--"; then
 	    :
-	elif test "$what" = args && printf %s\\n "$i" | grep -qv -- "^-"; then
+	elif test "$what" = args && printf %s\\n "$i" | grep -qv -- "^--"; then
 	    :
 	elif test "$what" = all; then
 	    :
