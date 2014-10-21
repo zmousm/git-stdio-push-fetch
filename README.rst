@@ -25,12 +25,12 @@ redirection currently requires `socat(1)
 on these systems. You will also need ``awk`` and ``mktemp`` for
 ``pipe-fetch-pack``.
 
-``git_stdio_client.sh`` provides shell functions that setup ssh
+``git_stdio_client.sh`` provides (bash) shell functions that setup ssh
 connections to the sending and receiving hosts and connect the two
-through a bidrectional pipe. The versions ending in ``2`` depend on
+through a bidirectional pipe. The versions ending in ``2`` depend on
 the git commands above; the other versions call ``socat`` directly, so
 the git commands are not necessary, however these implementations are
-messier and more error prone (but otherwise currently equivalent in
+messier and more error prone (but otherwise mostly equivalent in
 functionality).
 
 Having loaded the functions in your shell, you can then do::
